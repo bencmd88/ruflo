@@ -1,8 +1,8 @@
 # Claude Code Configuration - Ruflo v3.5
 
-> **Ruflo v3.5** (2026-04-07) — Stable release with verified capabilities.
+> **Ruflo v3.5** (2026-04-19) — Stable release with verified capabilities.
 > 6,000+ commits, 314 MCP tools, 16 agent roles + custom types, 19 AgentDB controllers.
-> Packages: `@claude-flow/cli@3.5.65`, `claude-flow@3.5.65`, `ruflo@3.5.65`
+> Packages: `@claude-flow/cli@3.5.80`, `claude-flow@3.5.80`, `ruflo@3.5.80`
 
 ## Behavioral Rules (Always Enforced)
 
@@ -34,16 +34,46 @@
 - Use event sourcing for state changes
 - Ensure input validation at system boundaries
 
-### Key Packages
+### Repository Layout
 
-| Package | Path | Purpose |
-|---------|------|---------|
-| `@claude-flow/cli` | `v3/@claude-flow/cli/` | CLI entry point (26 commands) |
-| `@claude-flow/codex` | `v3/@claude-flow/codex/` | Dual-mode Claude + Codex collaboration |
-| `@claude-flow/guidance` | `v3/@claude-flow/guidance/` | Governance control plane |
-| `@claude-flow/hooks` | `v3/@claude-flow/hooks/` | 17 hooks + 12 workers |
-| `@claude-flow/memory` | `v3/@claude-flow/memory/` | AgentDB + HNSW search |
-| `@claude-flow/security` | `v3/@claude-flow/security/` | Input validation, CVE remediation |
+- `v3/@claude-flow/` — active monorepo (all shipping packages below)
+- `ruflo/` — thin `npx ruflo` wrapper that depends on `@claude-flow/cli`
+- `plugin/` — bundled Claude Code plugin (agents, commands, hooks, skills)
+- `.claude/` — local Claude Code settings, agent definitions, skills
+- `.claude-plugin/` — marketplace manifest + hooks for the Claude plugin
+- `v2/` — legacy V2 codebase, retained only for `migrate` tooling; do not add new work here
+- `bin/`, `scripts/` — CLI entry (`bin/cli.js`) and install/cleanup utilities
+- `tests/` — root-level integration/regression tests (RVF harness, context-persistence)
+- `agents/` — YAML agent templates consumed by the CLI
+- `.github/` — issue templates, workflows, pattern-persistence docs
+
+### Key Packages (v3 monorepo)
+
+All packages live under `v3/@claude-flow/<name>/` and ship at the same alpha/stable version as the umbrella (currently `3.5.80`).
+
+| Package | Purpose |
+|---------|---------|
+| `@claude-flow/cli` | CLI entry point (26 commands, 140+ subcommands) and MCP server host |
+| `@claude-flow/shared` | Shared types, utilities, and config adapters |
+| `@claude-flow/mcp` | MCP tool/server primitives used by the CLI |
+| `@claude-flow/memory` | AgentDB + HNSW vector search, hybrid SQLite/vector backend |
+| `@claude-flow/embeddings` | ONNX + sql.js embeddings, chunking, hyperbolic support |
+| `@claude-flow/neural` | SONA / MoE / EWC++ pattern training |
+| `@claude-flow/hooks` | 27 hooks + 12 background workers |
+| `@claude-flow/guidance` | Governance control plane (compile, enforce, prove, evolve) |
+| `@claude-flow/security` | Input validation, path security, CVE remediation |
+| `@claude-flow/aidefence` | Runtime defence + threat detection |
+| `@claude-flow/swarm` | Swarm topologies and coordinators |
+| `@claude-flow/agents` | Built-in agent role definitions |
+| `@claude-flow/performance` | Profiling, benchmarking, optimisation |
+| `@claude-flow/providers` | AI provider adapters (Anthropic/OpenAI/Google/etc.) |
+| `@claude-flow/plugins` | Plugin manager, discovery, IPFS registry client |
+| `@claude-flow/claims` | Claims-based authorization (check/grant/revoke/list) |
+| `@claude-flow/integration` | Token optimizer + cross-package wiring (Agent Booster) |
+| `@claude-flow/deployment` | Deployment + release management |
+| `@claude-flow/codex` | Dual-mode Claude + Codex collaboration |
+| `@claude-flow/browser` | Browser automation MCP tooling |
+| `@claude-flow/testing` | Shared test harness |
 
 ## Concurrency: 1 MESSAGE = ALL RELATED OPERATIONS
 
@@ -647,16 +677,19 @@ SendMessage({
 | `in-process` | Teammates run in same process (default for CI/background) |
 | `tmux` | Split-pane display in terminal (requires tmux) |
 
-## V3 Hooks System (17 Hooks + 12 Workers)
+## V3 Hooks System (27 Hooks + 12 Workers)
 
 ### Hook Categories
 
 | Category | Hooks | Purpose |
 |----------|-------|---------|
-| **Core** | `pre-edit`, `post-edit`, `pre-command`, `post-command`, `pre-task`, `post-task` | Tool lifecycle |
+| **Core** | `pre-edit`, `post-edit`, `pre-command`, `post-command`, `pre-task`, `post-task`, `pre-bash`, `post-bash` (v2 compat) | Tool lifecycle |
 | **Session** | `session-start`, `session-end`, `session-restore`, `notify` | Context management |
-| **Intelligence** | `route`, `explain`, `pretrain`, `build-agents`, `transfer` | Neural learning |
+| **Intelligence** | `route`, `route-task` (v2 compat), `explain`, `pretrain`, `build-agents`, `transfer` | Neural learning |
 | **Learning** | `intelligence` (trajectory-start/step/end, pattern-store/search, stats, attention) | Reinforcement |
+| **Coverage** | `coverage-route`, `coverage-suggest`, `coverage-gaps` | Test-coverage-aware routing |
+| **Observability** | `metrics`, `progress`, `statusline`, `list` | Dashboards + status |
+| **Workers** | `worker` (list, dispatch, status, detect) | Background worker control |
 | **Agent Teams** | `teammate-idle`, `task-completed` | Multi-agent coordination |
 
 ### 12 Background Workers
